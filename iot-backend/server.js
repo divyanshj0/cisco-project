@@ -133,6 +133,33 @@ app.post('/auth/login', async (req, res) => {
     }
 });
 
+
+//change password
+app.post('/auth/change-password', protect, async (req, res) => {
+    try {
+        const { oldPassword, newPassword } = req.body;
+        const user = req.user;
+        console.log(oldPassword,newPassword)
+        // 1. Check if the old password is correct
+        const isMatch = await bcrypt.compare(oldPassword, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Incorrect old password.' });
+        }
+
+        // 2. Hash the new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // 3. Update the user's password in the database
+        user.password = hashedPassword;
+        await user.save();
+
+        res.status(200).json({ message: 'Password changed successfully.' });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Get and post api endpoints
 // Define a simple root route to test the server
 app.get('/', (req, res) => {
@@ -225,7 +252,7 @@ app.get('/api/readings/:deviceId', protect, async (req, res) => {
             return res.status(404).json({ error: 'Device not found.' });
         }
 
-        const whereClause = { DeviceDeviceId: deviceId };
+        const whereClause = { DeviceId: deviceId };
         const orderClause = [['createdAt', req.query.order || 'ASC']];
 
         if (req.query.startDate && req.query.endDate) {
