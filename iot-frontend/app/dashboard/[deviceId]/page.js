@@ -11,7 +11,7 @@ import Header from '@/components/Header'; // Import the new Header
 export default function DevicePage({ params }) {
   const router = useRouter();
   const [device, setDevice] = useState(null);
-  const [latestReadings, setLatestReadings] = useState({ temp: null, humid: null });
+  const [latestReadings, setLatestReadings] = useState({temp: { value: null, ts: null }, humid: { value: null, ts: null },});
   const [graphs, setGraphs] = useState([]);
   const [showGraphModal, setShowGraphModal] = useState(false);
   const [showDataModal, setShowDataModal] = useState(false);

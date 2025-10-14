@@ -11,6 +11,7 @@ const { Op } = require('sequelize');
 const http = require('http');
 const { WebSocketServer } = require('ws');
 const url = require('url');
+const { error } = require('console');
 // Initialize the Express app
 const app = express();
 const PORT = 8080;
@@ -25,42 +26,42 @@ const wss = new WebSocketServer({ server });
 
 const clients = new Map();
 wss.on('connection', async (ws, req) => {
-  // The frontend will send the JWT as a query parameter, e.g., ws://.../?token=...
-  const token = url.parse(req.url, true).query.token;
+    // The frontend will send the JWT as a query parameter, e.g., ws://.../?token=...
+    const token = url.parse(req.url, true).query.token;
 
-  if (!token) {
-    console.log('WebSocket connection rejected: No token provided.');
-    ws.close(1008, 'Token not provided');
-    return;
-  }
-
-  try {
-    // Verify the JWT
-    const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
-    const user = await User.findByPk(decoded.id);
-    
-    if (!user) {
-      console.log('WebSocket connection rejected: User not found.');
-      ws.close(1008, 'User not found');
-      return;
+    if (!token) {
+        console.log('WebSocket connection rejected: No token provided.');
+        ws.close(1008, 'Token not provided');
+        return;
     }
-    
-    const userId = user.userId;
-    
-    // Store the authenticated connection
-    clients.set(userId, ws);
-    console.log(`Client connected and authenticated for user ID: ${userId}`);
 
-    ws.on('close', () => {
-      // Remove the client from the map when they disconnect
-      clients.delete(userId);
-      console.log(`Client disconnected for user ID: ${userId}`);
-    });
+    try {
+        // Verify the JWT
+        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+        const user = await User.findByPk(decoded.id);
 
-  } catch (error) {
-    console.log('WebSocket connection rejected: Invalid token.');
-    ws.close(1008, 'Invalid token');
-  }
+        if (!user) {
+            console.log('WebSocket connection rejected: User not found.');
+            ws.close(1008, 'User not found');
+            return;
+        }
+
+        const userId = user.userId;
+
+        // Store the authenticated connection
+        clients.set(userId, ws);
+        console.log(`Client connected and authenticated for user ID: ${userId}`);
+
+        ws.on('close', () => {
+            // Remove the client from the map when they disconnect
+            clients.delete(userId);
+            console.log(`Client disconnected for user ID: ${userId}`);
+        });
+
+    } catch (error) {
+        console.log('WebSocket connection rejected: Invalid token.');
+        ws.close(1008, 'Invalid token');
+    }
 });
 
 
@@ -111,7 +112,7 @@ app.post('/auth/register', async (req, res) => {
         const user = await User.create({ email, password: hashedPassword });
         res.status(201).json({ message: 'User created successfully', userId: user.userId });
     } catch (error) {
-        res.status(500).json({ error: error||'Email may already be in use.' });
+        res.status(500).json({ error: error || 'Email may already be in use.' });
     }
 });
 
@@ -120,8 +121,10 @@ app.post('/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         const user = await User.findOne({ where: { email } });
-
-        if (!user || !(await bcrypt.compare(password, user.password))) {
+        if (!user){
+            return res.status(401).json({error:'User does not exist'})
+        }
+        if (!(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
@@ -139,7 +142,7 @@ app.post('/auth/change-password', protect, async (req, res) => {
     try {
         const { oldPassword, newPassword } = req.body;
         const user = req.user;
-        console.log(oldPassword,newPassword)
+        console.log(oldPassword, newPassword)
         // 1. Check if the old password is correct
         const isMatch = await bcrypt.compare(oldPassword, user.password);
         if (!isMatch) {
@@ -178,11 +181,11 @@ app.get('/api/devices', protect, async (req, res) => {
 // create device 
 app.post('/api/devices', protect, async (req, res) => {
     try {
-        const {name, location } = req.body;
+        const { name, location } = req.body;
 
         // Check if this user already has a device with this ID
         const existingDevice = await Device.findOne({
-            where: { UserUserId: req.user.userId ,name}
+            where: { UserUserId: req.user.userId, name }
         });
 
         if (existingDevice) {
@@ -196,6 +199,9 @@ app.post('/api/devices', protect, async (req, res) => {
         });
         res.status(201).json(device);
     } catch (error) {
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(400).json({ error: 'You already have a device with this name.' });
+        }
         res.status(500).json({ error: error.message });
     }
 });
@@ -208,7 +214,7 @@ app.post('/api/readings', protect, async (req, res) => {
         const newReading = await Reading.create({
             temperature,
             humidity,
-            DeviceId: deviceId 
+            DeviceId: deviceId
         });
 
         res.status(201).json(newReading);
@@ -253,7 +259,7 @@ app.get('/api/readings/:deviceId', protect, async (req, res) => {
         }
 
         const whereClause = { DeviceId: deviceId };
-        const orderClause = [['createdAt', req.query.order || 'ASC']];
+        const orderClause = [['createdAt', req.query.order || 'DESC']];
 
         if (req.query.startDate && req.query.endDate) {
             whereClause.createdAt = {

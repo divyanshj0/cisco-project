@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-const BACKEND_URL = process.env.BACKEND_URL;
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 export async function POST(req) {
   const { token, deviceId } = await req.json();
@@ -7,7 +7,7 @@ export async function POST(req) {
   const res = await fetch(`${BACKEND_URL}/api/devices/${deviceId}`, {
     method: 'DELETE',
     headers: {
-      'X-Authorization': `Bearer ${token}`,
+      'Authorization': `Bearer ${token}`,
     },
   });
 

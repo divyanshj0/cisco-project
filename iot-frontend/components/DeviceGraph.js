@@ -61,7 +61,7 @@ export default function DeviceGraph({ config, token, deviceId, onRemove }) {
       type: config.type,
       name: config.key.charAt(0).toUpperCase() + config.key.slice(1)
     }],
-    dataZoom: [{ type: 'inside' }, { type: 'slider' }],
+    dataZoom: [{ type: 'inside' }],
   };
 
   return (

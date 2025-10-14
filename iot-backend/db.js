@@ -48,14 +48,21 @@ const User = sequelize.define('User', {
 const Device = sequelize.define('Device', {
     name: {
         type: DataTypes.STRING,
-        unique:true,
         allowNull:false,
     },
     location: {
         type: DataTypes.STRING,
-        defaultValue: 'Not set'
-    }
-})
+        defaultValue:'Not set',
+    },
+}, {
+    indexes: [
+        {
+            unique: true,
+            fields: ['name', 'UserUserId'], // Unique per user
+        },
+    ],
+});
+
 // Reading modals
 const Reading = sequelize.define('Reading', {
     temperature: {
@@ -69,10 +76,10 @@ const Reading = sequelize.define('Reading', {
 })
 
 // Relationships
-User.hasMany(Device ,{onDelete: 'CASCADE'}); 
-Device.belongsTo(User); 
+User.hasMany(Device, { onDelete: 'CASCADE' });
+Device.belongsTo(User);
 
-Device.hasMany(Reading,{onDelete:'CASCADE'});  
+Device.hasMany(Reading, { onDelete: 'CASCADE' });
 Reading.belongsTo(Device);
 
 

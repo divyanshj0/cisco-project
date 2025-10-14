@@ -2,9 +2,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
-import { FiChevronRight, FiCpu, FiPlus } from 'react-icons/fi';
+import { FiCpu, FiPlus } from 'react-icons/fi';
+import { Trash2 } from 'lucide-react';
 import CreateDeviceModal from '@/components/CreateDeviceModal';
-import Header from '@/components/Header'; // Import the new Header
+import Header from '@/components/Header';
+import DeletePopup from '@/components/deletepopup';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -12,6 +14,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [isDeleteDevice, setIsDeleteDevice] = useState(false)
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null)
 
   const fetchDevices = async () => {
     const storedToken = localStorage.getItem('iot_token');
@@ -27,7 +32,12 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: storedToken }),
       });
-
+      if (res.status===400){
+        toast.error('session expired');
+        localStorage.clear();
+        router.push('/login');
+        return;
+      }
       if (!res.ok) throw new Error('Failed to fetch devices');
 
       const data = await res.json();
@@ -46,6 +56,23 @@ export default function Dashboard() {
     setName(userName || 'User');
     fetchDevices();
   }, [router]);
+
+  const handleDeletedevice = async (deviceId) => {
+    const token = localStorage.getItem('iot_token');
+    const res = fetch('api/iot/deleteDevice', {
+      method: 'POST',
+      body: JSON.stringify({ token, deviceId }),
+    })
+    if (!res.ok) {
+      toast.error(res.error || 'Something went wrong');
+      setDeleting(false);
+      return;
+    }
+    fetchDevices();
+    setIsDeleteDevice(false);
+    setDeleting(false);
+    toast.success('Customer deleted successfully');
+  }
 
   return (
     <>
@@ -75,17 +102,22 @@ export default function Dashboard() {
                 {devices.map(device => (
                   <div
                     key={device.id}
-                    onClick={() => {localStorage.setItem('deviceId',device.id);router.push(`/dashboard/${device.id}`)}}
-                    className="bg-white p-4 rounded-lg shadow-md flex justify-between items-center cursor-pointer hover:shadow-lg hover:bg-gray-50 transition hover:scale-105"
+                    className="bg-white p-4 rounded-lg shadow-md flex justify-between items-center  hover:shadow-lg hover:bg-gray-50 transition hover:scale-105"
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 cursor-pointer"
+                      onClick={() => { localStorage.setItem('deviceId', device.id); router.push(`/dashboard/${device.id}`) }}
+                    >
                       <FiCpu className="text-2xl text-blue-600" />
                       <div>
                         <p className="font-semibold text-lg text-gray-800">{device.name}</p>
                         <p className="text-sm text-gray-500">{device.location}</p>
                       </div>
                     </div>
-                    <FiChevronRight className="text-gray-400" />
+                    <button
+                      onClick={() => { setSelectedDeviceId(device.id); setIsDeleteDevice(true); }}
+                      className="p-2 rounded-full bg-red-100 hover:bg-red-200 text-red-500 transition">
+                      <Trash2 className="w-5 h-5" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -93,15 +125,23 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
-      
+
       {showCreateModal && (
-        <CreateDeviceModal 
+        <CreateDeviceModal
           onClose={() => setShowCreateModal(false)}
           onDeviceCreated={(newDevice) => {
             setDevices(prev => [...prev, newDevice]);
             const updatedDevices = [...devices, newDevice];
             localStorage.setItem('iot_devices', JSON.stringify(updatedDevices));
           }}
+        />
+      )}
+
+      {isDeleteDevice && (
+        <DeletePopup
+          onConfirm={() => handleDeletedevice(selectedDeviceId)}
+          onCancel={() => { setIsDeleteDevice(false); setSelectedDeviceId(null); }}
+          deleting={deleting}
         />
       )}
     </>

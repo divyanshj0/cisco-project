@@ -8,7 +8,7 @@ export default function Home() {
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('storedtoken');
+    const token = localStorage.getItem('iot_token');
 
     if (token ) {
       router.replace('/dashboard');
