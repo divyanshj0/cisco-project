@@ -39,7 +39,6 @@ export default function RegisterPage() {
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-blue-50">
-      <img src="/company_logo[1].png" alt="logo" className='h-24' />
       <h1 className="text-3xl font-bold text-blue-700 mt-4 text-center">Create a New Account</h1>
       <form onSubmit={handleRegister} className="flex flex-col gap-4 mt-10 text-xl">
         <input name="email" type="email" placeholder="Email" required className="border px-2 py-4 text-xl rounded" />

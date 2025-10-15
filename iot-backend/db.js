@@ -54,6 +54,15 @@ const Device = sequelize.define('Device', {
         type: DataTypes.STRING,
         defaultValue:'Not set',
     },
+    thresholds: {
+        type: DataTypes.JSONB,
+        defaultValue: {
+            tempMin: null,
+            tempMax: null,
+            humidityMin: null,
+            humidityMax: null
+        }
+    }
 }, {
     indexes: [
         {
@@ -75,6 +84,18 @@ const Reading = sequelize.define('Reading', {
     }
 })
 
+// Alert model
+const Alert = sequelize.define('Alert', {
+    description: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    seen: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+    },
+});
+
 // Relationships
 User.hasMany(Device, { onDelete: 'CASCADE' });
 Device.belongsTo(User);
@@ -82,6 +103,8 @@ Device.belongsTo(User);
 Device.hasMany(Reading, { onDelete: 'CASCADE' });
 Reading.belongsTo(Device);
 
+Device.hasMany(Alert, { onDelete: 'CASCADE' });
+Alert.belongsTo(Device);
 
 // create table if doesn't exsist
 sequelize.sync({ alter: true })
@@ -101,4 +124,4 @@ async function testConnection() {
 testConnection();
 
 // Export the sequelize instance to be used in other parts of the application
-module.exports = { sequelize, Device, Reading, User };
+module.exports = { sequelize, Device, Reading, User,Alert };

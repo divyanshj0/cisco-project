@@ -2,10 +2,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
-import { Cpu, Trash2, Plus, LayoutDashboard, ChevronRight, Search } from 'lucide-react';
+import { Cpu, Trash2, Plus, LayoutDashboard, ChevronRight,ChevronLeft, Search, Pencil } from 'lucide-react';
 import CreateDeviceModal from '@/components/CreateDeviceModal';
 import Header from '@/components/Header';
 import DeletePopup from '@/components/deletepopup';
+import UpdateDeviceModal from '@/components/UpdateDeviceModal';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -17,7 +18,14 @@ export default function Dashboard() {
   const [isDeleteDevice, setIsDeleteDevice] = useState(false)
   const [selectedDeviceId, setSelectedDeviceId] = useState(null)
   const [searchQuery, setSearchQuery] = useState('');
-  const fetchDevices = async () => {
+
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [deviceToUpdate, setDeviceToUpdate] = useState(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const fetchDevices = async (page = 1) => {
     const storedToken = localStorage.getItem('iot_token');
     if (!storedToken) {
       router.push('/login');
@@ -29,10 +37,10 @@ export default function Dashboard() {
       const res = await fetch('/api/iot/getdevices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: storedToken }),
+        body: JSON.stringify({ token: storedToken, page }),
       });
-      if (res.status === 400) {
-        toast.error('session expired');
+      if (res.status === 401) {
+        toast.error('Session expired. Please log in again.');
         localStorage.clear();
         router.push('/login');
         return;
@@ -41,6 +49,8 @@ export default function Dashboard() {
 
       const data = await res.json();
       setDevices(data.devices || []);
+      setTotalPages(data.totalPages || 1);
+      setCurrentPage(data.currentPage || 1);
       localStorage.setItem('iot_devices', JSON.stringify(data.devices || []));
     } catch (err) {
       console.error(err);
@@ -53,8 +63,8 @@ export default function Dashboard() {
   useEffect(() => {
     const userName = localStorage.getItem('iot_user');
     setName(userName || 'User');
-    fetchDevices();
-  }, [router]);
+    fetchDevices(currentPage);
+  }, [currentPage, router]);
 
   const handleDeletedevice = async (deviceId) => {
     setDeleting(true);
@@ -80,6 +90,7 @@ export default function Dashboard() {
     } catch (err) {
       toast.error(err.message);
     } finally {
+      await fetchDevices(currentPage);
       setIsDeleteDevice(false);
       setSelectedDeviceId(null);
       setDeleting(false); // End loading state
@@ -89,6 +100,10 @@ export default function Dashboard() {
     device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     device.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const openUpdateModal = (device) => {
+    setDeviceToUpdate(device);
+    setShowUpdateModal(true);
+  };
 
   return (
     <>
@@ -133,29 +148,58 @@ export default function Dashboard() {
             ) : filteredDevices.length === 0 ? (
               <p className="text-gray-500 text-center bg-white p-8 rounded-lg shadow-md">You have no devices yet. Click "Add Device" to get started!</p>
             ) : (
-              <div className="space-y-4">
-                {filteredDevices.map(device => (
-                  <div
-                    key={device.id}
-                    className="bg-white p-4 rounded-lg shadow-md flex justify-between items-center  hover:shadow-lg hover:bg-gray-50 transition hover:scale-105"
-                  >
-                    <div className="flex items-center gap-4 cursor-pointer"
-                      onClick={() => { localStorage.setItem('deviceId', device.id); router.push(`/dashboard/${device.id}`) }}
+              <>
+                <div className="space-y-4">
+                  {filteredDevices.map(device => (
+                    <div
+                      key={device.id}
+                      className="bg-white p-4 rounded-lg shadow-md flex justify-between items-center  hover:shadow-lg hover:bg-gray-50 transition hover:scale-105"
                     >
-                      <Cpu className="text-2xl text-blue-600" />
-                      <div>
-                        <p className="font-semibold text-lg text-gray-800 hover:underline">{device.name}</p>
-                        <p className="text-sm text-gray-500">{device.location}</p>
+                      <div className="flex items-center gap-4 cursor-pointer"
+                        onClick={() => { localStorage.setItem('deviceId', device.id); router.push(`/dashboard/${device.id}`) }}
+                      >
+                        <Cpu className="text-2xl text-blue-600" />
+                        <div>
+                          <p className="font-semibold text-lg text-gray-800 hover:underline">{device.name}</p>
+                          <p className="text-sm text-gray-500">{device.location}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openUpdateModal(device)}
+                          className="p-2 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-500 transition">
+                          <Pencil className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => { setSelectedDeviceId(device.id); setIsDeleteDevice(true); }}
+                          className="p-2 rounded-full bg-red-100 hover:bg-red-200 text-red-500 transition">
+                          <Trash2 className="w-5 h-5" />
+                        </button>
                       </div>
                     </div>
-                    <button
-                      onClick={() => { setSelectedDeviceId(device.id); setIsDeleteDevice(true); }}
-                      className="p-2 rounded-full bg-red-100 hover:bg-red-200 text-red-500 transition">
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                <div className="flex justify-center items-center mt-8">
+                  <button
+                    onClick={() => setCurrentPage(p => p - 1)}
+                    disabled={currentPage === 1}
+                    className="flex items-center p-2 bg-white rounded-l-lg border disabled:opacity-50"
+                  >
+                    <ChevronLeft /> Prev
+                  </button>
+                  <span className="p-2 bg-white border-t border-b">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => p + 1)}
+                    disabled={currentPage === totalPages}
+                    className="flex items-center p-2 bg-white rounded-r-lg border disabled:opacity-50"
+                  >
+                    Next <ChevronRight />
+                  </button>
+                </div>
+              </>
+
             )}
           </div>
         </div>
@@ -165,8 +209,19 @@ export default function Dashboard() {
         <CreateDeviceModal
           onClose={() => setShowCreateModal(false)}
           onDeviceCreated={(newDevice) => {
-            setDevices(prev => [...prev, newDevice]);
-            const updatedDevices = [...devices, newDevice];
+            toast.success(`Device "${newDevice.name}" created. It will appear in the list shortly.`);
+            fetchDevices(currentPage);
+          }}
+        />
+      )}
+
+      {showUpdateModal && (
+        <UpdateDeviceModal
+          device={deviceToUpdate}
+          onClose={() => setShowUpdateModal(false)}
+          onDeviceUpdated={(updatedDevice) => {
+            setDevices(prev => prev.map(d => d.id === updatedDevice.id ? updatedDevice : d));
+            const updatedDevices = devices.map(d => d.id === updatedDevice.id ? updatedDevice : d);
             localStorage.setItem('iot_devices', JSON.stringify(updatedDevices));
           }}
         />

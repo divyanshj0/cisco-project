@@ -2,12 +2,15 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
-import { Cpu, Plus, Send, LayoutDashboard, ChevronRight, ThermometerSun, Droplets } from 'lucide-react';
+import { Cpu, Plus, Send, LayoutDashboard, ChevronRight, ThermometerSun, Droplets, BellRing, ChevronLeft } from 'lucide-react';
 import GraphConfigModal from '@/components/GraphConfigModal';
 import DeviceGraph from '@/components/DeviceGraph';
 import SendDataModal from '@/components/SendDataModal';
 import Header from '@/components/Header';
-import StatsTable from '@/components/StatsTable'; // Import the new component
+import StatsTable from '@/components/StatsTable';
+import AlertsTable from '@/components/AlertTable';
+import ThresholdModal from '@/components/ThresholdModal';
+
 
 export default function DevicePage({ params }) {
   const router = useRouter();
@@ -26,8 +29,15 @@ export default function DevicePage({ params }) {
   const [timeRange, setTimeRange] = useState('24h');
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
 
-  const fetchLatestReadings = async (currentToken) => {
-    const deviceId = localStorage.getItem('deviceId');
+
+  const [alerts, setAlerts] = useState([]);
+  const [showThresholdModal, setShowThresholdModal] = useState(false);
+
+  const [alertCurrentPage, setAlertCurrentPage] = useState(1);
+  const [alertTotalPages, setAlertTotalPages] = useState(1);
+
+
+  const fetchLatestReadings = async (currentToken, deviceId) => {
     try {
       const res = await fetch(`/api/iot/getReadings`, {
         method: 'POST',
@@ -54,7 +64,7 @@ export default function DevicePage({ params }) {
   };
 
   // fetch statistics
-  const fetchStats = async (currentToken) => {
+  const fetchStats = async (currentToken, deviceId) => {
     setStatsLoading(true);
     let startDate, endDate;
     const now = new Date();
@@ -89,6 +99,24 @@ export default function DevicePage({ params }) {
       setStatsLoading(false);
     }
   };
+  // fetch alerts for the alert table 
+  const fetchAlerts = async (currentToken, deviceId, page = 1) => {
+    try {
+      const res = await fetch('/api/iot/getAlerts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: currentToken, deviceId, page }),
+      });
+      if (!res.ok) throw new Error('Failed to fetch alerts');
+      const data = await res.json();
+      setAlerts(data.alerts);
+      setAlertCurrentPage(data.currentPage);
+      setAlertTotalPages(data.totalPages);
+    } catch (err) {
+      toast.error('Could not load alerts.');
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     const storedToken = localStorage.getItem('iot_token');
@@ -112,16 +140,17 @@ export default function DevicePage({ params }) {
 
     if (currentDevice) {
       setDevice(currentDevice);
-      fetchLatestReadings(storedToken); // Initial fetch
+      fetchLatestReadings(storedToken, deviceId);
+      fetchAlerts(storedToken, deviceId, alertCurrentPage);
     } else {
       toast.error("Device not found.");
       router.push('/dashboard');
     }
-  }, [router]);
+  }, [router, alertCurrentPage]);
 
   useEffect(() => {
     if (token && deviceId) {
-      fetchStats(token);
+      fetchStats(token, deviceId);
     }
   }, [token, deviceId, timeRange, customRange]);
 
@@ -218,6 +247,49 @@ export default function DevicePage({ params }) {
             <StatsTable stats={stats} loading={statsLoading} />
           </div>
 
+          {/* Alerts Section */}
+          <div className="bg-white p-4 rounded-lg shadow-md mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <div className='flex items-center gap-2'>
+              <BellRing/>
+              <h2 className="text-xl font-bold text-gray-800">Alerts</h2>
+              </div>
+              <button
+                onClick={() => setShowThresholdModal(true)}
+                className="flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition"
+              >
+              Set Thresholds
+              </button>
+            </div>
+            <AlertsTable
+              alerts={alerts}
+              onMarkAsSeen={(alertId) => {
+                const token = localStorage.getItem('iot_token');
+                const deviceId = localStorage.getItem('deviceId');
+                fetchAlerts(token, deviceId, alertCurrentPage);
+              }}
+            />
+            {/* Alert Pagination Controls */}
+            <div className="flex justify-center items-center mt-4">
+              <button
+                onClick={() => setAlertCurrentPage(p => p - 1)}
+                disabled={alertCurrentPage === 1}
+                className="flex items-center p-2 bg-white rounded-l-lg border disabled:opacity-50"
+              >
+                <ChevronLeft /> Prev
+              </button>
+              <span className="p-2 bg-white border-t border-b">
+               {alertCurrentPage} / {alertTotalPages}
+              </span>
+              <button
+                onClick={() => setAlertCurrentPage(p => p + 1)}
+                disabled={alertCurrentPage === alertTotalPages}
+                className="flex items-center p-2 bg-white rounded-r-lg border disabled:opacity-50"
+              >
+                Next <ChevronRight />
+              </button>
+            </div>
+          </div>
 
           <div className="bg-white p-6 rounded-lg shadow-md">
             <div className="flex justify-between items-center mb-4">
@@ -255,9 +327,19 @@ export default function DevicePage({ params }) {
             onClose={(shouldRefresh) => {
               setShowDataModal(false);
               if (shouldRefresh) {
-                fetchLatestReadings(token);
-                fetchStats(token); // also refresh stats
+                fetchLatestReadings(token, deviceId);
+                fetchStats(token, deviceId); // also refresh stats
               }
+            }}
+          />
+        )}
+
+        {showThresholdModal && (
+          <ThresholdModal
+            device={device}
+            onClose={() => setShowThresholdModal(false)}
+            onThresholdsSet={(updatedThresholds) => {
+              setDevice(prev => ({ ...prev, thresholds: updatedThresholds }));
             }}
           />
         )}

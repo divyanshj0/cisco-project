@@ -1,5 +1,5 @@
 // Import and execute the database connection logic from db.js
-const { User, Device, Reading, sequelize } = require('./db');
+const { User, Device, Reading,Alert, sequelize } = require('./db');
 
 
 // Import required packages
@@ -172,8 +172,22 @@ app.get('/', (req, res) => {
 // Get a list of all devices
 app.get('/api/devices', protect, async (req, res) => {
     try {
-        const devices = await Device.findAll({ where: { UserUserId: req.user.userId } });
-        res.status(200).json(devices);
+        const page = parseInt(req.query.page, 10) || 1;
+        const limit = parseInt(req.query.limit, 10) || 10;
+        const offset = (page - 1) * limit;
+
+        const { count, rows } = await Device.findAndCountAll({
+            where: { UserUserId: req.user.userId },
+            order: [['name', 'ASC']],
+            limit: limit,
+            offset: offset,
+        });
+
+        res.status(200).json({
+            devices: rows,
+            totalPages: Math.ceil(count / limit),
+            currentPage: page,
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -217,7 +231,63 @@ app.post('/api/readings', protect, async (req, res) => {
             DeviceId: deviceId
         });
 
+        const device = await Device.findByPk(deviceId);
+        if (device && device.thresholds) {
+            const { tempMin, tempMax, humidityMin, humidityMax } = device.thresholds;
+            if (tempMin !== null && temperature < tempMin) {
+                await Alert.create({ description: `Temperature (${temperature}°C) is below the minimum threshold (${tempMin}°C).`, DeviceId: deviceId });
+            }
+            if (tempMax !== null && temperature > tempMax) {
+                await Alert.create({ description: `Temperature (${temperature}°C) is above the maximum threshold (${tempMax}°C).`, DeviceId: deviceId });
+            }
+            if (humidityMin !== null && humidity < humidityMin) {
+                await Alert.create({ description: `Humidity (${humidity}%) is below the minimum threshold (${humidityMin}%).`, DeviceId: deviceId });
+            }
+            if (humidityMax !== null && humidity > humidityMax) {
+                await Alert.create({ description: `Humidity (${humidity}%) is above the maximum threshold (${humidityMax}%).`, DeviceId: deviceId });
+            }
+        }
+
         res.status(201).json(newReading);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// update device using deviceid and useruserid
+app.put('/api/devices/:deviceId', protect, async (req, res) => {
+    try {
+        const { deviceId } = req.params;
+        const { name, location } = req.body;
+
+        const device = await Device.findOne({
+            where: { id: deviceId, UserUserId: req.user.userId }
+        });
+
+        if (!device) {
+            return res.status(404).json({ error: 'Device not found or you do not own this device.' });
+        }
+
+        // Check if the new name already exists for another device of the same user
+        if (name && name !== device.name) {
+            const existingDevice = await Device.findOne({
+                where: {
+                    name,
+                    UserUserId: req.user.userId,
+                    id: { [Op.ne]: deviceId } // Exclude the current device
+                }
+            });
+            if (existingDevice) {
+                return res.status(409).json({ error: 'A device with this name already exists.' });
+            }
+        }
+
+        // Update fields
+        device.name = name || device.name;
+        device.location = location || device.location;
+
+        await device.save();
+        res.status(200).json(device);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -324,6 +394,73 @@ app.get('/api/stats/:deviceId', protect, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+// Set thresholds for a device
+app.post('/api/devices/:deviceId/thresholds', protect, async (req, res) => {
+    try {
+        const { deviceId } = req.params;
+        const { tempMin, tempMax, humidityMin, humidityMax } = req.body;
+
+        const device = await Device.findOne({
+            where: { id: deviceId, UserUserId: req.user.userId }
+        });
+
+        if (!device) {
+            return res.status(404).json({ error: 'Device not found.' });
+        }
+
+        device.thresholds = {
+            tempMin: tempMin !== '' ? parseFloat(tempMin) : null,
+            tempMax: tempMax !== '' ? parseFloat(tempMax) : null,
+            humidityMin: humidityMin !== '' ? parseFloat(humidityMin) : null,
+            humidityMax: humidityMax !== '' ? parseFloat(humidityMax) : null,
+        };
+
+        await device.save();
+        res.status(200).json(device.thresholds);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get unseen alerts for a device
+app.get('/api/devices/:deviceId/alerts', protect, async (req, res) => {
+    try {
+        const { deviceId } = req.params;
+        const alerts = await Alert.findAll({
+            where: { DeviceId: deviceId, seen: false },
+            order: [['createdAt', 'DESC']]
+        });
+        res.status(200).json(alerts);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Mark an alert as seen
+app.put('/api/alerts/:alertId/seen', protect, async (req, res) => {
+    try {
+        const { alertId } = req.params;
+        const alert = await Alert.findByPk(alertId);
+
+        if (!alert) {
+            return res.status(404).json({ error: 'Alert not found.' });
+        }
+
+        // Optional: Check if the user owns the device associated with the alert
+        const device = await Device.findOne({ where: { id: alert.DeviceId, UserUserId: req.user.userId } });
+        if (!device) {
+            return res.status(403).json({ error: 'You are not authorized to update this alert.' });
+        }
+
+        alert.seen = true;
+        await alert.save();
+        res.status(200).json({ message: 'Alert marked as seen.' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 
 
 // Start the server and listen for connections
