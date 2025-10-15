@@ -34,7 +34,7 @@ export default function Header({ name }) {
         <div className="flex justify-between items-center">
           {/* Left Section: Logo and Title */}
           <div className="flex items-center gap-4">
-            <div className="hidden md:block">
+            <div>
               <h1 className="text-white text-lg font-medium">IoT Sensor Dashboard</h1>
               <p className="text-gray-400 text-sm">Real-time monitoring & control</p>
             </div>

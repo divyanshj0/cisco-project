@@ -297,8 +297,17 @@ app.get('/api/stats/:deviceId', protect, async (req, res) => {
         if (!device) {
             return res.status(404).json({ error: 'Device not found or you do not have permission to view it.' });
         }
+        
+        const whereClause = { DeviceId: req.params.deviceId };
+
+        if (req.query.startDate && req.query.endDate) {
+            whereClause.createdAt = {
+                [Op.between]: [new Date(req.query.startDate), new Date(req.query.endDate)]
+            };
+        }
+
         const result = await Reading.findOne({
-            where: { DeviceDeviceId: req.params.deviceId },
+            where: whereClause,
             attributes: [
                 [sequelize.fn('MIN', sequelize.col('temperature')), 'minTemp'],
                 [sequelize.fn('MAX', sequelize.col('temperature')), 'maxTemp'],

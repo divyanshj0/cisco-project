@@ -1,12 +1,10 @@
 import "./globals.css";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet-draw/dist/leaflet.draw.css'; // Add this line for the drawing controls
 
 export const metadata = {
-  title: "Industrial IoT Analytics",
-  description: "Analytics Platform  by The Elite Pro",
+  title: "IoT Sensor Dashboard",
+  description: "Real Time Monitoring and Control",
 };
 
 export default function RootLayout({ children }) {
