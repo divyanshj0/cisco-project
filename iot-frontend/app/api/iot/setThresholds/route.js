@@ -5,6 +5,9 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 export async function POST(req) {
   try {
     const { token, deviceId, thresholds } = await req.json();
+     if (!token) {
+      return NextResponse.json({ error: 'Missing token' }, { status: 404 });
+    }
     const res = await fetch(`${BACKEND_URL}/api/devices/${deviceId}/thresholds`, {
       method: 'POST',
       headers: {

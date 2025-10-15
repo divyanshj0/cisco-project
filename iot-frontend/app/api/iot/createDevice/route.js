@@ -6,8 +6,8 @@ export async function POST(req) {
   try {
     const { token, name, location } = await req.json();
 
-    if (!token || !name) {
-      return NextResponse.json({ error: 'Token and device name are required.' }, { status: 400 });
+    if (!token ) {
+      return NextResponse.json({ error: 'Token missing.' }, { status: 404 });
     }
 
     const res = await fetch(`${BACKEND_URL}/api/devices`, {

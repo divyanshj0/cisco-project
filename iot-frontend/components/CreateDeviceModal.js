@@ -20,6 +20,17 @@ export default function CreateDeviceModal({ onClose, onDeviceCreated }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, name, location }),
       });
+       if (res.status === 404) {
+        toast.error('Session expired. Please log in again.');
+        localStorage.clear();
+        router.push('/login');
+        return;
+      }
+       if (res.status === 409) {
+        toast.error('Device with same name already exist');
+        setLoading(false);
+        return;
+      }
 
       const data = await res.json();
       if (!res.ok) {

@@ -11,6 +11,12 @@ export default function AlertsTable({ alerts, onMarkAsSeen }) {
         body: JSON.stringify({ token, alertId }),
       });
       const data = await res.json();
+       if (res.status === 404) {
+        toast.error('Session expired. Please log in again.');
+        localStorage.clear();
+        router.push('/login');
+        return;
+      }
       if (!res.ok) throw new Error(data.error);
       toast.success('Alert marked as seen.');
       onMarkAsSeen(alertId);

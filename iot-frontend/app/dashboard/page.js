@@ -39,7 +39,7 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: storedToken, page }),
       });
-      if (res.status === 401) {
+      if (res.status === 404) {
         toast.error('Session expired. Please log in again.');
         localStorage.clear();
         router.push('/login');
@@ -75,6 +75,11 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, deviceId }),
       });
+      if (res.status === 404){
+        toast.error('Session expired Login Again!');
+        localStorage.clear()
+        router.push('/login');
+      }
 
       if (!res.ok) {
         const data = await res.json();
@@ -85,7 +90,6 @@ export default function Dashboard() {
       }
 
       toast.success('Device deleted successfully');
-      // Refresh the device list to reflect the deletion
       setDevices(prev => prev.filter(device => device.id !== deviceId));
     } catch (err) {
       toast.error(err.message);

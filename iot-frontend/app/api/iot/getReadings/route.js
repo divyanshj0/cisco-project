@@ -6,8 +6,11 @@ export async function POST(req) {
   try {
     const { token, deviceId, limit, startDate, endDate, sortBy, order } = await req.json();
 
-    if (!token || !deviceId) {
-      return NextResponse.json({ error: 'Missing token or deviceId' }, { status: 400 });
+    if (!token) {
+      return NextResponse.json({ error: 'Missing token' }, { status: 404 });
+    }
+    if (!deviceId) {
+      return NextResponse.json({ error: 'Missing deviceId' }, { status: 400 });
     }
 
     // Build query params dynamically

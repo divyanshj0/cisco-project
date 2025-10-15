@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link'; // Import Link
-import { BiSolidHide, BiShow, BiLeftArrowAlt } from "react-icons/bi";
+import { BiSolidHide, BiShow} from "react-icons/bi";
 import { toast } from 'react-toastify';
 
 export default function LoginPage() {

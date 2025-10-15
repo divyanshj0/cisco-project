@@ -17,7 +17,8 @@ export default function UpdateDeviceModal({ device, onClose, onDeviceUpdated }) 
 
   const handleUpdate = async () => {
     if (!name.trim()) {
-      return toast.error('Device name is required.');
+      toast.error('Device name is required.');
+      return 
     }
     setLoading(true);
     try {
@@ -27,6 +28,12 @@ export default function UpdateDeviceModal({ device, onClose, onDeviceUpdated }) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, deviceId: device.id, name, location }),
       });
+      if (res.status === 404) {
+        toast.error('Session expired. Please log in again.');
+        localStorage.clear();
+        router.push('/login');
+        return;
+      }
 
       const data = await res.json();
       if (!res.ok) {

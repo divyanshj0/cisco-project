@@ -36,6 +36,12 @@ export default function DeviceGraph({ config, token, deviceId, onRemove }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token, deviceId, startTs, endTs }),
         });
+        if (res.status === 404) {
+          toast.error('Session expired. Please log in again.');
+          localStorage.clear();
+          router.push('/login');
+          return;
+        }
         if (!res.ok) throw new Error('Failed to fetch data');
         const result = await res.json();
         const chartData = result.readings.map(r => ({
@@ -69,19 +75,19 @@ export default function DeviceGraph({ config, token, deviceId, onRemove }) {
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-bold">{config.key.charAt(0).toUpperCase() + config.key.slice(1)} ({config.type} chart)</h3>
         <div className="flex items-center gap-2">
-           <select value={timeRange} onChange={e => setTimeRange(e.target.value)} className="p-1 border rounded text-sm">
-                <option value="24h">Last 24 Hours</option>
-                <option value="7d">Last 7 Days</option>
-                <option value="30d">Last 30 Days</option>
-                <option value="custom">Custom Range</option>
-            </select>
+          <select value={timeRange} onChange={e => setTimeRange(e.target.value)} className="p-1 border rounded text-sm">
+            <option value="24h">Last 24 Hours</option>
+            <option value="7d">Last 7 Days</option>
+            <option value="30d">Last 30 Days</option>
+            <option value="custom">Custom Range</option>
+          </select>
           <button onClick={onRemove} className="text-red-500 hover:text-red-700"><FiTrash2 /></button>
         </div>
       </div>
       {timeRange === 'custom' && (
         <div className="flex gap-2 mb-4 items-center">
-            <input type="date" value={customRange.start} onChange={e => setCustomRange(p => ({...p, start: e.target.value}))} className="p-1 border rounded text-sm"/>
-            <input type="date" value={customRange.end} onChange={e => setCustomRange(p => ({...p, end: e.target.value}))} className="p-1 border rounded text-sm"/>
+          <input type="date" value={customRange.start} onChange={e => setCustomRange(p => ({ ...p, start: e.target.value }))} className="p-1 border rounded text-sm" />
+          <input type="date" value={customRange.end} onChange={e => setCustomRange(p => ({ ...p, end: e.target.value }))} className="p-1 border rounded text-sm" />
         </div>
       )}
       {loading ? (

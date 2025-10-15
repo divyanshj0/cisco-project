@@ -6,7 +6,7 @@ export async function POST(req) {
   try {
     const { token, deviceId, startDate, endDate } = await req.json();
 
-    if (!token || !deviceId) {
+    if (!token) {
       return NextResponse.json({ error: 'Missing token or deviceId' }, { status: 400 });
     }
 

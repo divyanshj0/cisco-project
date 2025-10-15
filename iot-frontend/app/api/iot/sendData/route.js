@@ -6,8 +6,8 @@ export async function POST(req) {
   try {
     const { token, deviceId, temperature, humidity } = await req.json();
 
-    if (!token || !deviceId || temperature === undefined || humidity === undefined) {
-      return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
+    if ( !token) {
+      return NextResponse.json({ error: 'Token Missing.' }, { status: 404 });
     }
 
     const res = await fetch(`${BACKEND_URL}/api/readings`, {

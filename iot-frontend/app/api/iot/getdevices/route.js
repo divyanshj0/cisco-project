@@ -6,6 +6,10 @@ export async function POST(req) {
   try {
     const { token, page } = await req.json();
 
+     if (!token) {
+      return NextResponse.json({ error: 'Missing token' }, { status: 404 });
+    }
+
     const params = new URLSearchParams();
     params.append('page', page || 1);
     params.append('limit', 10);

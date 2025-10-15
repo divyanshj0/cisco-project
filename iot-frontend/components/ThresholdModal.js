@@ -33,6 +33,12 @@ export default function ThresholdModal({ device, onClose, onThresholdsSet }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, deviceId: device.id, thresholds }),
       });
+       if (res.status === 404) {
+        toast.error('Session expired. Please log in again.');
+        localStorage.clear();
+        router.push('/login');
+        return;
+      }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       toast.success('Thresholds saved successfully!');

@@ -20,14 +20,16 @@ export default function ChangePasswordModal({ onClose }) {
             router.push('/login');
             return;
         }
-        if (newPassword !== confirmPassword) {
-            return toast.error('New passwords do not match!');
+        if (/\s/.test(newPassword)) {
+            toast.warning('Password should not contain any spaces.');
+            setLoading(false);
+            return;
         }
         // NEW: Check if old and new passwords are the same
         if (currentPassword === newPassword) {
             return toast.error("New password cannot be the same as the old password.");
         }
-        
+
         setLoading(true);
         try {
             const response = await fetch('/api/iot/changePassword', {
@@ -45,9 +47,10 @@ export default function ChangePasswordModal({ onClose }) {
                 throw new Error(data.error || 'Failed to update password');
             }
 
-            toast.success('Password changed successfully! Please log in again.');
-            localStorage.clear();
-            router.push('/login');
+            toast.success('Password changed successfully!');
+            if (data.token) {
+                localStorage.setItem('iot_token', data.token);
+            }
             onClose();
         } catch (err) {
             console.error(err);
@@ -101,7 +104,7 @@ export default function ChangePasswordModal({ onClose }) {
                     {confirmPassword && newPassword !== confirmPassword && (
                         <div className="text-red-500 text-sm">Passwords do not match</div>
                     )}
-                     {currentPassword && newPassword && currentPassword === newPassword && (
+                    {currentPassword && newPassword && currentPassword === newPassword && (
                         <div className="text-red-500 text-sm">New password cannot be the same as the old one.</div>
                     )}
                     <div className="flex justify-end space-x-4 pt-6">

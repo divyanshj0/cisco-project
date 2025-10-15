@@ -107,12 +107,17 @@ const protect = async (req, res, next) => {
 app.post('/auth/register', async (req, res) => {
     try {
         const { email, password } = req.body;
+        // Check if a user with this email already exists
+        const existingUser = await User.findOne({ where: { email } });
+        if (existingUser) {
+            return res.status(409).json({ error: 'A user with this email already exists.' });
+        }
         // Hash the password before saving
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await User.create({ email, password: hashedPassword });
         res.status(201).json({ message: 'User created successfully', userId: user.userId });
     } catch (error) {
-        res.status(500).json({ error: error || 'Email may already be in use.' });
+        res.status(500).json({ error: 'An error occurred during registration.' });
     }
 });
 
@@ -141,25 +146,29 @@ app.post('/auth/login', async (req, res) => {
 app.post('/auth/change-password', protect, async (req, res) => {
     try {
         const { oldPassword, newPassword } = req.body;
-        const user = req.user;
-        console.log(oldPassword, newPassword)
-        // 1. Check if the old password is correct
+        const user = await User.findByPk(req.user.userId);
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+
         const isMatch = await bcrypt.compare(oldPassword, user.password);
         if (!isMatch) {
             return res.status(401).json({ error: 'Incorrect old password.' });
         }
 
-        // 2. Hash the new password
         const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-        // 3. Update the user's password in the database
         user.password = hashedPassword;
         await user.save();
 
-        res.status(200).json({ message: 'Password changed successfully.' });
+        // Create and return a new JWT
+        const token = jwt.sign({ id: user.userId }, process.env.TOKEN_SECRET, { expiresIn: '1d' });
+
+        res.status(200).json({ message: 'Password changed successfully.', token: token });
 
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error changing password:', error);
+        res.status(500).json({ error: 'An internal server error occurred.' });
     }
 });
 

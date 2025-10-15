@@ -44,6 +44,17 @@ export default function DevicePage({ params }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: currentToken, deviceId: deviceId, limit: 1 }),
       });
+      if (res.status === 404) {
+        toast.error('Session expired. Please log in again.');
+        localStorage.clear();
+        router.push('/login');
+        return;
+      }
+      if (res.status === 400) {
+        toast.error('Missing DeviceID');
+        router.push('/login');
+        return;
+      }
 
       if (!res.ok) throw new Error('Failed to fetch latest readings');
 
@@ -89,6 +100,12 @@ export default function DevicePage({ params }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: currentToken, deviceId, startDate, endDate }),
       });
+       if (res.status === 404) {
+        toast.error('Session expired. Please log in again.');
+        localStorage.clear();
+        router.push('/login');
+        return;
+      }
       if (!res.ok) throw new Error('Failed to fetch stats');
       const data = await res.json();
       setStats(data);
@@ -107,6 +124,12 @@ export default function DevicePage({ params }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: currentToken, deviceId, page }),
       });
+       if (res.status === 404) {
+        toast.error('Session expired. Please log in again.');
+        localStorage.clear();
+        router.push('/login');
+        return;
+      }
       if (!res.ok) throw new Error('Failed to fetch alerts');
       const data = await res.json();
       setAlerts(data.alerts);
@@ -251,14 +274,14 @@ export default function DevicePage({ params }) {
           <div className="bg-white p-4 rounded-lg shadow-md mb-8">
             <div className="flex justify-between items-center mb-4">
               <div className='flex items-center gap-2'>
-              <BellRing/>
-              <h2 className="text-xl font-bold text-gray-800">Alerts</h2>
+                <BellRing />
+                <h2 className="text-xl font-bold text-gray-800">Alerts</h2>
               </div>
               <button
                 onClick={() => setShowThresholdModal(true)}
                 className="flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition"
               >
-              Set Thresholds
+                Set Thresholds
               </button>
             </div>
             <AlertsTable
@@ -279,7 +302,7 @@ export default function DevicePage({ params }) {
                 <ChevronLeft /> Prev
               </button>
               <span className="p-2 bg-white border-t border-b">
-               {alertCurrentPage} / {alertTotalPages}
+                {alertCurrentPage} / {alertTotalPages}
               </span>
               <button
                 onClick={() => setAlertCurrentPage(p => p + 1)}

@@ -30,7 +30,7 @@ export async function POST(req) {
       return NextResponse.json({ error: data.error || 'Password change failed' }, { status: res.status });
     }
 
-    return NextResponse.json({ message: 'Password changed successfully.' });
+    return NextResponse.json(data);
   } catch (err) {
     console.error('Change password error:', err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });

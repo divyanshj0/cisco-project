@@ -20,6 +20,12 @@ export default function SendDataModal({ deviceId, onClose }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, deviceId, temperature, humidity }),
       });
+       if (res.status === 404) {
+        toast.error('Session expired. Please log in again.');
+        localStorage.clear();
+        router.push('/login');
+        return;
+      }
 
       if (!res.ok) {
         const data = await res.json();
